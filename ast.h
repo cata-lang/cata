@@ -11,9 +11,11 @@ enum class ExprKind {
   Variable,
   Prefix,
   Binary,
+  Block,
   Call,
   Prototype,
   Function,
+  Let,
   If
 };
 
@@ -99,6 +101,20 @@ class BinaryExprAST : public ExprAST {
   void print(std::ostream& os) const override;
 };
 
+class BlockExprAST : public ExprAST {
+ public:
+  BlockExprAST(std::vector<std::unique_ptr<ExprAST>>&& exprs);
+
+  std::vector<std::unique_ptr<ExprAST>>& exprs();
+
+  void accept(ASTNodeVisitor& visitor) override;
+
+ private:
+  std::vector<std::unique_ptr<ExprAST>> exprs_;
+
+  void print(std::ostream& os) const override;
+};
+
 class CallExprAST : public ExprAST {
  public:
   CallExprAST(const std::string& callee,
@@ -149,6 +165,22 @@ class FunctionAST : public ExprAST {
   void print(std::ostream& os) const override;
 };
 
+class LetExprAST : public ExprAST {
+ public:
+  LetExprAST(const std::string& name, std::unique_ptr<ExprAST> expr);
+
+  const std::string& name() const;
+  std::unique_ptr<ExprAST>& expr();
+
+  void accept(ASTNodeVisitor& visitor) override;
+
+ private:
+  std::string name_;
+  std::unique_ptr<ExprAST> expr_;
+
+  void print(std::ostream& os) const override;
+};
+
 class IfExprAST : public ExprAST {
  public:
   IfExprAST(std::unique_ptr<ExprAST> condition,
@@ -173,8 +205,10 @@ class ASTNodeVisitor {
   virtual void visitVariableNode(VariableExprAST* node) = 0;
   virtual void visitPrefixNode(PrefixExprAST* node) = 0;
   virtual void visitBinaryNode(BinaryExprAST* node) = 0;
+  virtual void visitBlockNode(BlockExprAST* node) = 0;
   virtual void visitCallNode(CallExprAST* node) = 0;
   virtual void visitPrototypeNode(PrototypeAST* node) = 0;
   virtual void visitFunctionNode(FunctionAST* node) = 0;
+  virtual void visitLetNode(LetExprAST* node) = 0;
   virtual void visitIfNode(IfExprAST* node) = 0;
 };

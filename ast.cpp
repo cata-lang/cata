@@ -89,6 +89,25 @@ void BinaryExprAST::print(std::ostream& os) const {
   os << '(' << *lhs_ << ' ' << Token(op_) << ' ' << *rhs_ << ')';
 }
 
+BlockExprAST::BlockExprAST(std::vector<std::unique_ptr<ExprAST>>&& exprs)
+    : ExprAST{ExprKind::Block}, exprs_{std::move(exprs)} {}
+
+std::vector<std::unique_ptr<ExprAST>>& BlockExprAST::exprs() {
+  return exprs_;
+}
+
+void BlockExprAST::accept(ASTNodeVisitor& visitor) {
+  visitor.visitBlockNode(this);
+}
+
+void BlockExprAST::print(std::ostream& os) const {
+  os << "{\n";
+  for (const auto& expr : exprs_) {
+    os << *expr << '\n';
+  }
+  os << '}';
+}
+
 CallExprAST::CallExprAST(const std::string& callee,
                          std::vector<std::unique_ptr<ExprAST>> args)
     : ExprAST{ExprKind::Call}, callee_{callee}, args_{std::move(args)} {}
@@ -159,6 +178,25 @@ void FunctionAST::accept(ASTNodeVisitor& visitor) {
 
 void FunctionAST::print(std::ostream& os) const {
   os << *prototype_ << ' ' << *body_;
+}
+
+LetExprAST::LetExprAST(const std::string& name, std::unique_ptr<ExprAST> expr)
+    : ExprAST{ExprKind::Let}, name_{name}, expr_{std::move(expr)} {}
+
+const std::string& LetExprAST::name() const {
+  return name_;
+}
+
+std::unique_ptr<ExprAST>& LetExprAST::expr() {
+  return expr_;
+}
+
+void LetExprAST::accept(ASTNodeVisitor& visitor) {
+  visitor.visitLetNode(this);
+}
+
+void LetExprAST::print(std::ostream& os) const {
+  os << "let " << name_ << " = " << *expr_;
 }
 
 IfExprAST::IfExprAST(std::unique_ptr<ExprAST> condition,

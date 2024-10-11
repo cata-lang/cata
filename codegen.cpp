@@ -41,7 +41,7 @@ void Codegen::visitLiteralNode(LiteralExprAST* node) {
 }
 
 void Codegen::visitVariableNode(VariableExprAST* node) {
-  Value* value = named_values_[node->name()];
+  Value* value = get_variable(node->name());
   if (!value) error("use of undeclared variable, %s", node->name().c_str());
   VISITOR_RETURN(value);
 }
@@ -85,25 +85,13 @@ void Codegen::visitBinaryNode(BinaryExprAST* node) {
   }
 }
 
-Function* Codegen::get_function(const std::string& name,
-                                const std::vector<Type*>& arg_types,
-                                bool expect_declared) {
-  if (Function* function = module_->getFunction(name)) {
-    if (!expect_declared && !function->empty())
-      error("redefinition of function, %s", name.c_str());
-    if (function->arg_size() != arg_types.size())
-      error("function %s expects %lu arguments, but got %lu", name.c_str(),
-            function->arg_size(), arg_types.size());
-    for (size_t i = 0; i < arg_types.size(); ++i) {
-      if (function->getArg(i)->getType() != arg_types[i])
-        error("function %s argument %lu type mismatch", name.c_str(), i + 1);
-    }
-    return function;
+void Codegen::visitBlockNode(BlockExprAST* node) {
+  Value* last_value = nullptr;
+  for (auto& expr : node->exprs()) {
+    last_value = visitNode(expr.get());
+    if (!last_value) VISITOR_RETURN(nullptr);
   }
-  if (std::unique_ptr<PrototypeAST>& prototype = function_prototypes_[name]) {
-    return visitNode(prototype.get());
-  }
-  return nullptr;
+  VISITOR_RETURN(last_value);
 }
 
 void Codegen::visitCallNode(CallExprAST* node) {
@@ -165,9 +153,10 @@ void Codegen::visitFunctionNode(FunctionAST* node) {
     error("failed to create function, %s", prototype.name().c_str());
   BasicBlock* basic_block = BasicBlock::Create(*context_, "entry", function);
   builder_->SetInsertPoint(basic_block);
-  named_values_.clear();
+  begin_scope();
   for (auto& arg : function->args()) {
-    named_values_[std::string(arg.getName())] = &arg;
+    arg.setName(prototype.args()[arg.getArgNo()]);
+    set_variable(std::string(arg.getName()), &arg);
   }
   if (Value* ret = visitNode(node->body().get())) {
     builder_->CreateRet(ret);
@@ -177,6 +166,13 @@ void Codegen::visitFunctionNode(FunctionAST* node) {
   }
   function->eraseFromParent();
   VISITOR_RETURN(nullptr);
+}
+
+void Codegen::visitLetNode(LetExprAST* node) {
+  Value* value = visitNode(node->expr().get());
+  if (!value) VISITOR_RETURN(nullptr);
+  set_variable(node->name(), value);
+  VISITOR_RETURN(value);
 }
 
 void Codegen::visitIfNode(IfExprAST* node) {
@@ -190,7 +186,9 @@ void Codegen::visitIfNode(IfExprAST* node) {
              *merge_block = BasicBlock::Create(*context_, "ifcont");
   builder_->CreateCondBr(cond, then_block, else_block);
   builder_->SetInsertPoint(then_block);
+  begin_scope();
   Value* then_value = visitNode(node->then_expr().get());
+  end_scope();
   if (!then_value) VISITOR_RETURN(nullptr);
   builder_->CreateBr(merge_block);
   then_block = builder_->GetInsertBlock();
@@ -198,7 +196,9 @@ void Codegen::visitIfNode(IfExprAST* node) {
   builder_->SetInsertPoint(else_block);
   Value* else_value = nullptr;
   if (node->else_expr()) {
+    begin_scope();
     else_value = visitNode(node->else_expr().get());
+    end_scope();
     if (!else_value) VISITOR_RETURN(nullptr);
   }
   builder_->CreateBr(merge_block);
@@ -215,6 +215,47 @@ void Codegen::visitIfNode(IfExprAST* node) {
                           else_block);
   }
   VISITOR_RETURN(phi_node);
+}
+
+void Codegen::begin_scope() {
+  named_values_.push_back({});
+}
+
+void Codegen::end_scope() {
+  named_values_.pop_back();
+}
+
+Value* Codegen::get_variable(const std::string& name) {
+  // variables can be shadowed, so we start searching from the top
+  for (auto it = named_values_.rbegin(); it != named_values_.rend(); ++it) {
+    if (auto value = it->find(name); value != it->end()) return value->second;
+  }
+  return nullptr;
+}
+
+void Codegen::set_variable(const std::string& name, Value* value) {
+  named_values_.back()[name] = value;
+}
+
+Function* Codegen::get_function(const std::string& name,
+                                const std::vector<Type*>& arg_types,
+                                bool expect_declared) {
+  if (Function* function = module_->getFunction(name)) {
+    if (!expect_declared && !function->empty())
+      error("redefinition of function, %s", name.c_str());
+    if (function->arg_size() != arg_types.size())
+      error("function %s expects %lu arguments, but got %lu", name.c_str(),
+            function->arg_size(), arg_types.size());
+    for (size_t i = 0; i < arg_types.size(); ++i) {
+      if (function->getArg(i)->getType() != arg_types[i])
+        error("function %s argument %lu type mismatch", name.c_str(), i + 1);
+    }
+    return function;
+  }
+  if (std::unique_ptr<PrototypeAST>& prototype = function_prototypes_[name]) {
+    return visitNode(prototype.get());
+  }
+  return nullptr;
 }
 
 #undef VISITOR_RETURN

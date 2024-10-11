@@ -18,6 +18,7 @@ class Token {
     // literals
     IntLiteral,
     // keywords
+    Let,
     Def,
     Extern,
     If,
@@ -35,11 +36,11 @@ class Token {
     Unknown,
   };
   inline static const std::string KindNames[] = {
-      "Eof",       "Not",        "Plus",       "Minus",     "Star",
-      "Slash",     "Equals",     "IntLiteral", "Def",       "Extern",
-      "If",        "Else",       "Identifier", "LeftParen", "RightParen",
-      "LeftBrace", "RightBrace", "Comma",      "Semicolon", "Comment",
-      "Unknown",
+      "Eof",        "Not",       "Plus",       "Minus",      "Star",
+      "Slash",      "Equals",    "IntLiteral", "Let",        "Def",
+      "Extern",     "If",        "Else",       "Identifier", "LeftParen",
+      "RightParen", "LeftBrace", "RightBrace", "Comma",      "Semicolon",
+      "Comment",    "Unknown",
   };
 
   Token(Kind kind);

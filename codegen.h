@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <map>
 #include <memory>
 
@@ -36,7 +37,7 @@ class Codegen : ASTNodeVisitor {
   std::unique_ptr<LLVMContext> context_;
   std::unique_ptr<Module> module_;
   std::unique_ptr<IRBuilder<>> builder_;
-  std::map<std::string, Value*> named_values_;
+  std::deque<std::map<std::string, Value*>> named_values_;
   std::map<std::string, std::unique_ptr<PrototypeAST>> function_prototypes_;
 
   Codegen();
@@ -45,10 +46,18 @@ class Codegen : ASTNodeVisitor {
   void visitVariableNode(VariableExprAST* node) override;
   void visitPrefixNode(PrefixExprAST* node) override;
   void visitBinaryNode(BinaryExprAST* node) override;
+  void visitBlockNode(BlockExprAST* node) override;
   void visitCallNode(CallExprAST* node) override;
   void visitPrototypeNode(PrototypeAST* node) override;
   void visitFunctionNode(FunctionAST* node) override;
+  void visitLetNode(LetExprAST* node) override;
   void visitIfNode(IfExprAST* node) override;
+
+  void begin_scope();
+  void end_scope();
+
+  Value* get_variable(const std::string& name);
+  void set_variable(const std::string& name, Value* value);
 
   Function* get_function(const std::string& name,
                          const std::vector<Type*>& arg_types,

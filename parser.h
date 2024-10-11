@@ -15,9 +15,12 @@ class Parser {
   std::unique_ptr<ExprAST> primary();
   std::unique_ptr<ExprAST> prefix();
   std::unique_ptr<ExprAST> binary(int prev_precedence = 0);
+  std::unique_ptr<ExprAST> statement();
+  std::unique_ptr<ExprAST> block();
   std::unique_ptr<PrototypeAST> prototype();
   std::unique_ptr<ExprAST> definition();
   std::unique_ptr<ExprAST> extern_proto();
+  std::unique_ptr<ExprAST> let_stmt();
   std::unique_ptr<ExprAST> if_stmt();
   std::unique_ptr<ExprAST> top_level();
 

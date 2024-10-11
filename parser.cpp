@@ -165,6 +165,37 @@ std::unique_ptr<ExprAST> Parser::binary(int prev_precedence) {
   return lhs;
 }
 
+// statement ::= let_stmt ';'
+//           ::= binary ';'
+std::unique_ptr<ExprAST> Parser::statement() {
+  Token token = tokenizer_.next_token();
+  tokenizer_.putback(token);
+  std::unique_ptr<ExprAST> stmt;
+  switch (token.kind()) {
+    case Token::Kind::Let:
+      stmt = let_stmt();
+      break;
+    default:
+      stmt = binary();
+      break;
+  }
+  expect_semicolon();
+  return stmt;
+}
+
+// block ::= '{' statement* '}'
+std::unique_ptr<ExprAST> Parser::block() {
+  expect_lbrace();
+  std::vector<std::unique_ptr<ExprAST>> statements;
+  while (Token token = tokenizer_.next_token()) {
+    tokenizer_.putback(token);
+    if (token.kind() == Token::Kind::RightBrace) break;
+    statements.push_back(statement());
+  }
+  expect_rbrace();
+  return std::make_unique<BlockExprAST>(std::move(statements));
+}
+
 // prototype ::= Identifier '(' (Identifier (',' Identifier)*)? ')'
 std::unique_ptr<PrototypeAST> Parser::prototype() {
   Token token = tokenizer_.next_token();
@@ -192,17 +223,14 @@ std::unique_ptr<PrototypeAST> Parser::prototype() {
   return std::make_unique<PrototypeAST>(name, std::move(args));
 }
 
-// definition ::= Def prototype '{' binary ';' '}'
+// definition ::= Def prototype block
 std::unique_ptr<ExprAST> Parser::definition() {
   expect(Token::Kind::Def, "function definition");
   auto proto = prototype();
   if (!proto) error_expected(tokenizer_, tokenizer_.cur_token(), "prototype");
-  expect_lbrace();
-  auto body = binary();
+  auto body = block();
   if (!body)
     error_expected(tokenizer_, tokenizer_.cur_token(), "body expression");
-  expect_semicolon();
-  expect_rbrace();
   return std::make_unique<FunctionAST>(std::move(proto), std::move(body));
 }
 
@@ -215,19 +243,29 @@ std::unique_ptr<ExprAST> Parser::extern_proto() {
   return proto;
 }
 
-// if_stmt ::= If '(' binary ')' '{' binary ';' '}' ('else' ('{' binary ';' '}'
-// | if_stmt))?
+// let_stmt ::= let Identifier '=' binary
+std::unique_ptr<ExprAST> Parser::let_stmt() {
+  expect(Token::Kind::Let, "let");
+  Token token = tokenizer_.next_token();
+  if (token.kind() != Token::Kind::Identifier) {
+    error_expected(tokenizer_, token, "variable name");
+  }
+  std::string name = token.lexeme();
+  expect(Token::Kind::Equals, "=");
+  auto expr = binary();
+  if (!expr) error_expected(tokenizer_, tokenizer_.cur_token(), "expression");
+  return std::make_unique<LetExprAST>(name, std::move(expr));
+}
+
+// if_stmt ::= If '(' binary ')' block ('else' (block | if_stmt))?
 std::unique_ptr<ExprAST> Parser::if_stmt() {
   expect(Token::Kind::If, "if");
   expect_lparen();
   auto cond = binary();
   if (!cond) error_expected(tokenizer_, tokenizer_.cur_token(), "condition");
   expect_rparen();
-  expect_lbrace();
-  auto then = binary();
+  auto then = block();
   if (!then) error_expected(tokenizer_, tokenizer_.cur_token(), "then block");
-  expect_semicolon();
-  expect_rbrace();
   log("got if block");
   // else block is optional
   Token token = tokenizer_.next_token();
@@ -244,24 +282,22 @@ std::unique_ptr<ExprAST> Parser::if_stmt() {
     return std::make_unique<IfExprAST>(std::move(cond), std::move(then),
                                        if_stmt());
   }
-  expect_lbrace();
-  auto els = binary();
+  auto els = block();
   if (!els) error_expected(tokenizer_, tokenizer_.cur_token(), "else block");
-  expect_semicolon();
-  expect_rbrace();
   log("got else block");
   return std::make_unique<IfExprAST>(std::move(cond), std::move(then),
                                      std::move(els));
 }
 
 std::unique_ptr<ExprAST> Parser::top_level() {
-  auto expr = binary();
-  if (!expr) return nullptr;
-  log("got top level expression");
-  expect_semicolon();
-  auto proto =
-      std::make_unique<PrototypeAST>("main", std::vector<std::string>{});
-  return std::make_unique<FunctionAST>(std::move(proto), std::move(expr));
+  error("top level expressions are not supported yet");
+  // auto expr = binary();
+  // if (!expr) return nullptr;
+  // log("got top level expression");
+  // expect_semicolon();
+  // auto proto =
+  //     std::make_unique<PrototypeAST>("main", std::vector<std::string>{});
+  // return std::make_unique<FunctionAST>(std::move(proto), std::move(expr));
 }
 
 void Parser::expect(Token::Kind kind, const std::string& what) {

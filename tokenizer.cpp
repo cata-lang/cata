@@ -29,9 +29,8 @@ static Token::Kind get_single_char_kind(char c) {
 
 static Token::Kind get_keyword_kind(const std::string& lexeme) {
   static std::unordered_map<std::string, Token::Kind> keywords = {
-      {"def", Token::Kind::Def},
-      {"extern", Token::Kind::Extern},
-      {"if", Token::Kind::If},
+      {"let", Token::Kind::Let},       {"def", Token::Kind::Def},
+      {"extern", Token::Kind::Extern}, {"if", Token::Kind::If},
       {"else", Token::Kind::Else},
   };
   auto it = keywords.find(lexeme);
