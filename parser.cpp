@@ -35,7 +35,7 @@ std::unique_ptr<ExprAST> Parser::literal() {
   return std::make_unique<LiteralExprAST>(token.int_value());
 }
 
-// paren ::= LeftParen binary RightParen
+// paren ::= '(' binary ')'
 std::unique_ptr<ExprAST> Parser::paren() {
   expect(Token::Kind::LeftParen, "(");
   auto expr = binary();
@@ -45,7 +45,7 @@ std::unique_ptr<ExprAST> Parser::paren() {
 }
 
 // identifier ::= Identifier
-//            ::= Identifier LeftParen (binary (Comma binary)*)? RightParen
+//            ::= Identifier '(' (binary (',' binary)*)? ')'
 std::unique_ptr<ExprAST> Parser::identifier() {
   Token token = tokenizer_.next_token();
   if (token.kind() != Token::Kind::Identifier) {
@@ -165,8 +165,7 @@ std::unique_ptr<ExprAST> Parser::binary(int prev_precedence) {
   return lhs;
 }
 
-// prototype ::= Identifier LeftParen (Identifier (Comma Identifier)*)?
-// RightParen
+// prototype ::= Identifier '(' (Identifier (',' Identifier)*)? ')'
 std::unique_ptr<PrototypeAST> Parser::prototype() {
   Token token = tokenizer_.next_token();
   if (token.kind() != Token::Kind::Identifier) {
@@ -193,7 +192,7 @@ std::unique_ptr<PrototypeAST> Parser::prototype() {
   return std::make_unique<PrototypeAST>(name, std::move(args));
 }
 
-// definition ::= Def prototype LeftBrace binary RightBrace
+// definition ::= Def prototype '{' binary ';' '}'
 std::unique_ptr<ExprAST> Parser::definition() {
   expect(Token::Kind::Def, "function definition");
   auto proto = prototype();
@@ -216,8 +215,8 @@ std::unique_ptr<ExprAST> Parser::extern_proto() {
   return proto;
 }
 
-// if_stmt ::= If LeftParen binary RightParen LeftBrace binary Semicolon
-//             RightBrace (Else LeftBrace binary Semicolon RightBrace)?
+// if_stmt ::= If '(' binary ')' '{' binary ';' '}' ('else' ('{' binary ';' '}'
+// | if_stmt))?
 std::unique_ptr<ExprAST> Parser::if_stmt() {
   expect(Token::Kind::If, "if");
   expect_lparen();
@@ -237,6 +236,13 @@ std::unique_ptr<ExprAST> Parser::if_stmt() {
     tokenizer_.putback(token);
     return std::make_unique<IfExprAST>(std::move(cond), std::move(then),
                                        nullptr);
+  }
+  token = tokenizer_.next_token();
+  tokenizer_.putback(token);
+  if (token.kind() == Token::Kind::If) {
+    log("else if block");
+    return std::make_unique<IfExprAST>(std::move(cond), std::move(then),
+                                       if_stmt());
   }
   expect_lbrace();
   auto els = binary();
