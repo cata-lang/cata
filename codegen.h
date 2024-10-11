@@ -26,24 +26,10 @@ class Codegen : ASTNodeVisitor {
 
   static Codegen& instance();
 
+  std::string get_ir() const;
+
   Value* visitNode(ExprAST* node);
   Function* visitNode(PrototypeAST* node);
-
-  void visitLiteralNode(LiteralExprAST* node) override;
-  void visitVariableNode(VariableExprAST* node) override;
-  void visitPrefixNode(PrefixExprAST* node) override;
-  void visitBinaryNode(BinaryExprAST* node) override;
-  void visitCallNode(CallExprAST* node) override;
-  void visitPrototypeNode(PrototypeAST* node) override;
-  void visitFunctionNode(FunctionAST* node) override;
-  void visitIfNode(IfExprAST* node) override;
-
-  std::unique_ptr<LLVMContext>& context();
-  std::unique_ptr<Module>& module();
-  std::unique_ptr<IRBuilder<>>& builder();
-  Value*& named_value(const std::string& name);
-  void clear_named_values();
-  std::unique_ptr<PrototypeAST>& function_prototype(const std::string& name);
 
  private:
   void* visit_result_;
@@ -54,6 +40,15 @@ class Codegen : ASTNodeVisitor {
   std::map<std::string, std::unique_ptr<PrototypeAST>> function_prototypes_;
 
   Codegen();
+
+  void visitLiteralNode(LiteralExprAST* node) override;
+  void visitVariableNode(VariableExprAST* node) override;
+  void visitPrefixNode(PrefixExprAST* node) override;
+  void visitBinaryNode(BinaryExprAST* node) override;
+  void visitCallNode(CallExprAST* node) override;
+  void visitPrototypeNode(PrototypeAST* node) override;
+  void visitFunctionNode(FunctionAST* node) override;
+  void visitIfNode(IfExprAST* node) override;
 
   Function* get_function(const std::string& name,
                          const std::vector<Type*>& arg_types,

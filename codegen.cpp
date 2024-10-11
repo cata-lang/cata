@@ -13,6 +13,13 @@ Codegen& Codegen::instance() {
   return codegen;
 }
 
+std::string Codegen::get_ir() const {
+  std::string ir;
+  raw_string_ostream os{ir};
+  module_->print(os, nullptr);
+  return os.str();
+}
+
 Value* Codegen::visitNode(ExprAST* node) {
   node->accept(*this);
   return static_cast<Value*>(visit_result_);
@@ -34,7 +41,7 @@ void Codegen::visitLiteralNode(LiteralExprAST* node) {
 }
 
 void Codegen::visitVariableNode(VariableExprAST* node) {
-  Value* value = named_value(node->name());
+  Value* value = named_values_[node->name()];
   if (!value) error("use of undeclared variable, %s", node->name().c_str());
   VISITOR_RETURN(value);
 }
@@ -93,7 +100,7 @@ Function* Codegen::get_function(const std::string& name,
     }
     return function;
   }
-  if (std::unique_ptr<PrototypeAST>& prototype = function_prototype(name)) {
+  if (std::unique_ptr<PrototypeAST>& prototype = function_prototypes_[name]) {
     return visitNode(prototype.get());
   }
   return nullptr;
@@ -152,15 +159,15 @@ void Codegen::visitFunctionNode(FunctionAST* node) {
           function->getArg(i)->getName().str().c_str(),
           prototype.name().c_str(), i + 1);
   }
-  function_prototype(prototype.name()) = std::move(node->prototype());
+  function_prototypes_[prototype.name()] = std::move(node->prototype());
   function = get_function(prototype.name(), arg_types, true);
   if (!function)
     error("failed to create function, %s", prototype.name().c_str());
   BasicBlock* basic_block = BasicBlock::Create(*context_, "entry", function);
   builder_->SetInsertPoint(basic_block);
-  clear_named_values();
+  named_values_.clear();
   for (auto& arg : function->args()) {
-    named_value(std::string(arg.getName())) = &arg;
+    named_values_[std::string(arg.getName())] = &arg;
   }
   if (Value* ret = visitNode(node->body().get())) {
     builder_->CreateRet(ret);
@@ -210,27 +217,4 @@ void Codegen::visitIfNode(IfExprAST* node) {
   VISITOR_RETURN(phi_node);
 }
 
-std::unique_ptr<LLVMContext>& Codegen::context() {
-  return context_;
-}
-
-std::unique_ptr<Module>& Codegen::module() {
-  return module_;
-}
-
-std::unique_ptr<IRBuilder<>>& Codegen::builder() {
-  return builder_;
-}
-
-Value*& Codegen::named_value(const std::string& name) {
-  return named_values_[name];
-}
-
-void Codegen::clear_named_values() {
-  named_values_.clear();
-}
-
-std::unique_ptr<PrototypeAST>& Codegen::function_prototype(
-    const std::string& name) {
-  return function_prototypes_[name];
-}
+#undef VISITOR_RETURN

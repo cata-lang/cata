@@ -11,5 +11,5 @@ int main(int argc, char* argv[]) {
   auto parser = Parser{"./program.txt"};
   // Codegen::instance().visitNode(parser.definition().get());
   // Codegen::instance().visitNode(parser.top_level().get());
-  Codegen::instance().module()->print(errs(), nullptr);
+  std::cout << Codegen::instance().get_ir() << std::endl;
 }
