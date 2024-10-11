@@ -1,0 +1,5 @@
+/build
+ir/*.ll
+ir/*.s
+ir/*.o
+ir/*.exe
