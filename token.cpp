@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "token.h"
 
 Token::Token(Kind kind) : kind_{kind} {}

@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "ast.h"
 #include "fmt.h"
 
