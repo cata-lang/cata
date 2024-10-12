@@ -1,6 +1,5 @@
 #pragma once
 
-#include <iosfwd>
 #include <memory>
 #include <vector>
 
@@ -29,13 +28,8 @@ class ExprAST {
   ExprKind kind() const;
   virtual void accept(ASTNodeVisitor& visitor) = 0;
 
-  friend std::ostream& operator<<(std::ostream& os, const ExprAST& expr);
-
  private:
   ExprKind kind_;
-
- protected:
-  virtual void print(std::ostream& os) const = 0;
 };
 
 class LiteralExprAST : public ExprAST {
@@ -48,8 +42,6 @@ class LiteralExprAST : public ExprAST {
 
  private:
   int value_;
-
-  void print(std::ostream& os) const override;
 };
 
 class VariableExprAST : public ExprAST {
@@ -62,8 +54,6 @@ class VariableExprAST : public ExprAST {
 
  private:
   std::string name_;
-
-  void print(std::ostream& os) const override;
 };
 
 class PrefixExprAST : public ExprAST {
@@ -78,8 +68,6 @@ class PrefixExprAST : public ExprAST {
  private:
   Token::Kind op_;
   std::unique_ptr<ExprAST> operand_;
-
-  void print(std::ostream& os) const override;
 };
 
 class BinaryExprAST : public ExprAST {
@@ -97,8 +85,6 @@ class BinaryExprAST : public ExprAST {
  private:
   Token::Kind op_;
   std::unique_ptr<ExprAST> lhs_, rhs_;
-
-  void print(std::ostream& os) const override;
 };
 
 class BlockExprAST : public ExprAST {
@@ -111,8 +97,6 @@ class BlockExprAST : public ExprAST {
 
  private:
   std::vector<std::unique_ptr<ExprAST>> exprs_;
-
-  void print(std::ostream& os) const override;
 };
 
 class CallExprAST : public ExprAST {
@@ -128,8 +112,6 @@ class CallExprAST : public ExprAST {
  private:
   std::string callee_;
   std::vector<std::unique_ptr<ExprAST>> args_;
-
-  void print(std::ostream& os) const override;
 };
 
 class PrototypeAST : public ExprAST {
@@ -144,8 +126,6 @@ class PrototypeAST : public ExprAST {
  private:
   std::string name_;
   std::vector<std::string> args_;
-
-  void print(std::ostream& os) const override;
 };
 
 class FunctionAST : public ExprAST {
@@ -161,8 +141,6 @@ class FunctionAST : public ExprAST {
  private:
   std::unique_ptr<PrototypeAST> prototype_;
   std::unique_ptr<ExprAST> body_;
-
-  void print(std::ostream& os) const override;
 };
 
 class LetExprAST : public ExprAST {
@@ -177,8 +155,6 @@ class LetExprAST : public ExprAST {
  private:
   std::string name_;
   std::unique_ptr<ExprAST> expr_;
-
-  void print(std::ostream& os) const override;
 };
 
 class IfExprAST : public ExprAST {
@@ -195,8 +171,6 @@ class IfExprAST : public ExprAST {
 
  private:
   std::unique_ptr<ExprAST> condition_, then_expr_, else_expr_;
-
-  void print(std::ostream& os) const override;
 };
 
 class ASTNodeVisitor {

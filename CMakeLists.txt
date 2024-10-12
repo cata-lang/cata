@@ -16,6 +16,7 @@ add_definitions(${LLVM_DEFINITIONS_LIST})
 add_executable(cata
   main.cpp
   ast.cpp
+  astprinter.cpp
   codegen.cpp
   parser.cpp
   token.cpp

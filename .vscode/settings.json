@@ -83,6 +83,7 @@
     "shared_mutex": "cpp",
     "sstream": "cpp",
     "bitset": "cpp",
-    "*.def": "cpp"
+    "*.def": "cpp",
+    "unordered_set": "cpp"
   },
 }
