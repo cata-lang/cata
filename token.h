@@ -14,7 +14,25 @@ class Token {
     Minus,
     Star,
     Slash,
+    Remainder,
     Equals,
+    // bitwise
+    Ampersand,
+    Pipe,
+    Caret,
+    Tilde,
+    LeftShift,
+    RightShift,
+    // logical
+    And,
+    Or,
+    // comparison
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
     // literals
     IntLiteral,
     // keywords
@@ -37,7 +55,10 @@ class Token {
   };
   inline static const std::string KindNames[] = {
       "Eof",        "Not",       "Plus",       "Minus",      "Star",
-      "Slash",      "Equals",    "IntLiteral", "Let",        "Def",
+      "Slash",      "Remainder", "Equals",     "Ampersand",  "Pipe",
+      "Caret",      "Tilde",     "LeftShift",  "RightShift", "And",
+      "Or",         "Eq",        "Ne",         "Lt",         "Le",
+      "Gt",         "Ge",        "IntLiteral", "Let",        "Def",
       "Extern",     "If",        "Else",       "Identifier", "LeftParen",
       "RightParen", "LeftBrace", "RightBrace", "Comma",      "Semicolon",
       "Comment",    "Unknown",

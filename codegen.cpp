@@ -60,6 +60,8 @@ void Codegen::visitPrefixNode(PrefixExprAST* node) {
       VISITOR_RETURN(operand);
     case Token::Kind::Minus:
       VISITOR_RETURN(builder_->CreateNeg(operand, "negtmp"));
+    case Token::Kind::Tilde:
+      VISITOR_RETURN(builder_->CreateNot(operand, "nottmp"));
     default:
       error("invalid prefix operator, %s",
             Token(node->op()).as_string().c_str());
@@ -70,6 +72,7 @@ void Codegen::visitBinaryNode(BinaryExprAST* node) {
   Value *lhs = visitNode(node->lhs().get()),
         *rhs = visitNode(node->rhs().get());
   if (!lhs || !rhs) VISITOR_RETURN(nullptr);
+  Value* result = nullptr;
   switch (node->op()) {
     case Token::Kind::Plus:
       VISITOR_RETURN(builder_->CreateAdd(lhs, rhs, "addtmp"));
@@ -79,10 +82,60 @@ void Codegen::visitBinaryNode(BinaryExprAST* node) {
       VISITOR_RETURN(builder_->CreateMul(lhs, rhs, "multmp"));
     case Token::Kind::Slash:
       VISITOR_RETURN(builder_->CreateSDiv(lhs, rhs, "divtmp"));
+    case Token::Kind::Remainder:
+      VISITOR_RETURN(builder_->CreateSRem(lhs, rhs, "remtmp"));
+    // bitwise
+    case Token::Kind::Ampersand:
+      VISITOR_RETURN(builder_->CreateAnd(lhs, rhs, "andtmp"));
+    case Token::Kind::Pipe:
+      VISITOR_RETURN(builder_->CreateOr(lhs, rhs, "ortmp"));
+    case Token::Kind::Caret:
+      VISITOR_RETURN(builder_->CreateXor(lhs, rhs, "xortmp"));
+    case Token::Kind::Tilde:
+      VISITOR_RETURN(builder_->CreateNot(rhs, "nottmp"));
+    case Token::Kind::LeftShift:
+      VISITOR_RETURN(builder_->CreateShl(lhs, rhs, "shltmp"));
+    case Token::Kind::RightShift:
+      VISITOR_RETURN(builder_->CreateAShr(lhs, rhs, "ashrtmp"));
+    // logical
+    case Token::Kind::And:
+    case Token::Kind::Or: {
+      lhs = builder_->CreateICmpNE(
+          lhs, ConstantInt::get(*context_, APInt(32, 0)), "nelhs");
+      rhs = builder_->CreateICmpNE(
+          rhs, ConstantInt::get(*context_, APInt(32, 0)), "nerhs");
+      if (node->op() == Token::Kind::And) {
+        result = builder_->CreateAnd(lhs, rhs, "andtmp");
+      } else {
+        result = builder_->CreateOr(lhs, rhs, "ortmp");
+      }
+      break;
+    }
+    // comparison
+    case Token::Kind::Eq:
+      result = builder_->CreateICmpEQ(lhs, rhs, "eqtmp");
+      break;
+    case Token::Kind::Ne:
+      result = builder_->CreateICmpNE(lhs, rhs, "netmp");
+      break;
+    case Token::Kind::Lt:
+      result = builder_->CreateICmpSLT(lhs, rhs, "lttmp");
+      break;
+    case Token::Kind::Le:
+      result = builder_->CreateICmpSLE(lhs, rhs, "letmp");
+      break;
+    case Token::Kind::Gt:
+      result = builder_->CreateICmpSGT(lhs, rhs, "gttmp");
+      break;
+    case Token::Kind::Ge:
+      result = builder_->CreateICmpSGE(lhs, rhs, "getmp");
+      break;
     default:
       error("invalid binary operator, %s",
             Token(node->op()).as_string().c_str());
   }
+  // extend the result to 32 bits
+  VISITOR_RETURN(builder_->CreateZExt(result, Type::getInt32Ty(*context_)));
 }
 
 void Codegen::visitBlockNode(BlockExprAST* node) {

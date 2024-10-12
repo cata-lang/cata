@@ -14,21 +14,47 @@ Tokenizer::~Tokenizer() {
 }
 
 static Token::Kind get_single_char_kind(char c) {
-  static std::unordered_map<char, Token::Kind> single_char_tokens = {
-      {'!', Token::Kind::Not},       {'+', Token::Kind::Plus},
-      {'-', Token::Kind::Minus},     {'*', Token::Kind::Star},
-      {'/', Token::Kind::Slash},     {'=', Token::Kind::Equals},
-      {'(', Token::Kind::LeftParen}, {')', Token::Kind::RightParen},
-      {'{', Token::Kind::LeftBrace}, {'}', Token::Kind::RightBrace},
-      {',', Token::Kind::Comma},     {';', Token::Kind::Semicolon},
+  static const std::unordered_map<char, Token::Kind> single_char_tokens = {
+      {'!', Token::Kind::Not},        {'+', Token::Kind::Plus},
+      {'-', Token::Kind::Minus},      {'*', Token::Kind::Star},
+      {'/', Token::Kind::Slash},      {'%', Token::Kind::Remainder},
+      {'=', Token::Kind::Equals},     {'&', Token::Kind::Ampersand},
+      {'|', Token::Kind::Pipe},       {'^', Token::Kind::Caret},
+      {'~', Token::Kind::Tilde},      {'<', Token::Kind::Lt},
+      {'>', Token::Kind::Gt},         {'(', Token::Kind::LeftParen},
+      {')', Token::Kind::RightParen}, {'{', Token::Kind::LeftBrace},
+      {'}', Token::Kind::RightBrace}, {',', Token::Kind::Comma},
+      {';', Token::Kind::Semicolon},
   };
   auto it = single_char_tokens.find(c);
   if (it == single_char_tokens.end()) return Token::Kind::Unknown;
   return it->second;
 }
 
+static Token::Kind get_double_char_kind(Token::Kind kind, char c) {
+  static const std::unordered_map<Token::Kind,
+                                  std::unordered_map<char, Token::Kind>>
+      double_char_tokens = {
+          {Token::Kind::Slash,
+           {{'/', Token::Kind::Comment}, {'*', Token::Kind::Comment}}},
+          {Token::Kind::Lt,
+           {{'<', Token::Kind::LeftShift}, {'=', Token::Kind::Le}}},
+          {Token::Kind::Gt,
+           {{'>', Token::Kind::RightShift}, {'=', Token::Kind::Ge}}},
+          {Token::Kind::Equals, {{'=', Token::Kind::Eq}}},
+          {Token::Kind::Not, {{'=', Token::Kind::Ne}}},
+          {Token::Kind::Ampersand, {{'&', Token::Kind::And}}},
+          {Token::Kind::Pipe, {{'|', Token::Kind::Or}}},
+      };
+  auto it = double_char_tokens.find(kind);
+  if (it == double_char_tokens.end()) return Token::Kind::Unknown;
+  auto it2 = it->second.find(c);
+  if (it2 == it->second.end()) return Token::Kind::Unknown;
+  return it2->second;
+}
+
 static Token::Kind get_keyword_kind(const std::string& lexeme) {
-  static std::unordered_map<std::string, Token::Kind> keywords = {
+  static const std::unordered_map<std::string, Token::Kind> keywords = {
       {"let", Token::Kind::Let},       {"def", Token::Kind::Def},
       {"extern", Token::Kind::Extern}, {"if", Token::Kind::If},
       {"else", Token::Kind::Else},
@@ -82,14 +108,29 @@ Token Tokenizer::next_token_internal() {
   if (!file_) return Token::Kind::Eof;
   Token::Kind kind = get_single_char_kind(c);
   if (kind != Token::Kind::Unknown) {
-    if (kind == Token::Kind::Slash &&
-        get_single_char_kind(file_.peek()) == Token::Kind::Slash) {
-      file_.get(c);
-      std::string comment;
-      std::getline(file_, comment);
-      return Token(Token::Kind::Comment, comment);
+    Token::Kind double_kind = get_double_char_kind(kind, file_.peek());
+    if (double_kind == Token::Kind::Unknown)
+      return Token(kind, std::string(1, c));
+    std::string lexeme = std::string(1, c) + (char)file_.get();
+    if (double_kind == Token::Kind::Comment) {
+      if (lexeme == "//") {
+        std::getline(file_, lexeme);
+      } else {
+        // block comment
+        lexeme.clear();
+        while (true) {
+          if (file_.get(c) && c == '*' && file_.peek() == '/') {
+            file_.get(c);
+            break;
+          }
+          if (!file_)
+            error_expected((*this), Token(Token::Kind::Comment, "EOF"), "*/");
+          lexeme += c;
+        }
+      }
+      return Token(Token::Kind::Comment, lexeme);
     }
-    return Token(kind, std::string(1, c));
+    return Token(double_kind, lexeme);
   }
   if (isdigit(c)) {
     file_.putback(c);

@@ -1,6 +1,7 @@
 // This is a comment
 extern input();
 extern print(a);
+// extern test_operators();
 
 def fib(n) {
     let ans = if (!n) {
@@ -13,13 +14,38 @@ def fib(n) {
     ans;
 }
 
+
 def main() {
-    // let n = input();
-    // print(fib(n));
-    let x = 1;
-    print(if (1) {
-        let x = 4;
-        x;
-    });
-    print(x);
+    let n = input();
+    print(fib(n));
+    // test_operators();
+}
+
+/*
+def test_operators() {
+    let x = 5;
+    let y = 3;
+
+    print(x + y);
+    print(x - y);
+    print(x * y);
+    print(x / y);
+    print(x % y);
+
+    print(x & y);
+    print(x | y);
+    print(x ^ y);
+    print(~x);
+    print(x << y);
+    print(x >> y);
+
+    print(!x && y);
+    print(!x || y);
+
+    print(x == y);
+    print(x != y);
+    print(x < y);
+    print(x <= y);
+    print(x > y);
+    print(x >= y);
 }

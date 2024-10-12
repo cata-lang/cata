@@ -104,8 +104,9 @@ std::unique_ptr<ExprAST> Parser::primary() {
 // prefix ::= primary
 //        ::= op prefix
 std::unique_ptr<ExprAST> Parser::prefix() {
-  static std::unordered_set<Token::Kind> prefix_operators = {
-      Token::Kind::Not, Token::Kind::Plus, Token::Kind::Minus};
+  static const std::unordered_set<Token::Kind> prefix_operators = {
+      Token::Kind::Not, Token::Kind::Plus, Token::Kind::Minus,
+      Token::Kind::Tilde};
   Token op = tokenizer_.next_token();
   if (prefix_operators.find(op.kind()) == prefix_operators.end()) {
     tokenizer_.putback(op);
@@ -117,11 +118,39 @@ std::unique_ptr<ExprAST> Parser::prefix() {
 }
 
 static int get_binary_precedence(const Tokenizer& tokenizer, const Token& op) {
-  static std::unordered_map<Token::Kind, int> operator_precedence = {
-      {Token::Kind::Plus, 10},
-      {Token::Kind::Minus, 10},
-      {Token::Kind::Star, 20},
-      {Token::Kind::Slash, 20}};
+  static const std::unordered_map<Token::Kind, int> operator_precedence = {
+      // ! ~
+      {Token::Kind::Not, 100},
+      {Token::Kind::Tilde, 100},
+      // * / %
+      {Token::Kind::Star, 90},
+      {Token::Kind::Slash, 90},
+      {Token::Kind::Remainder, 90},
+      // + -
+      {Token::Kind::Plus, 80},
+      {Token::Kind::Minus, 80},
+      // << >>
+      {Token::Kind::LeftShift, 70},
+      {Token::Kind::RightShift, 70},
+      // < <= > >=
+      {Token::Kind::Lt, 60},
+      {Token::Kind::Le, 60},
+      {Token::Kind::Gt, 60},
+      {Token::Kind::Ge, 60},
+      // == !=
+      {Token::Kind::Eq, 50},
+      {Token::Kind::Ne, 50},
+      // &
+      {Token::Kind::Ampersand, 25},
+      // ^
+      {Token::Kind::Caret, 20},
+      // |
+      {Token::Kind::Pipe, 15},
+      // &&
+      {Token::Kind::And, 10},
+      // ||
+      {Token::Kind::Or, 5},
+  };
   auto it = operator_precedence.find(op.kind());
   if (it == operator_precedence.end()) {
     error_expected(tokenizer, op, "operator");
@@ -165,13 +194,16 @@ std::unique_ptr<ExprAST> Parser::binary(int prev_precedence) {
   return lhs;
 }
 
-// statement ::= let_stmt ';'
+// statement ::= if_stmt
+//           ::= let_stmt ';'
 //           ::= binary ';'
 std::unique_ptr<ExprAST> Parser::statement() {
   Token token = tokenizer_.next_token();
   tokenizer_.putback(token);
   std::unique_ptr<ExprAST> stmt;
   switch (token.kind()) {
+    case Token::Kind::If:
+      return if_stmt();
     case Token::Kind::Let:
       stmt = let_stmt();
       break;
