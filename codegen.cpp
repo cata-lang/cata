@@ -41,8 +41,11 @@ void Codegen::visitLiteralNode(LiteralExprAST* node) {
 }
 
 void Codegen::visitVariableNode(VariableExprAST* node) {
-  Value* value = get_variable(node->name());
-  if (!value) error("use of undeclared variable, %s", node->name().c_str());
+  AllocaInst* alloca = get_variable(node->name());
+  if (!alloca) error("use of undeclared variable, %s", node->name().c_str());
+  // load the value
+  Value* value =
+      builder_->CreateLoad(alloca->getAllocatedType(), alloca, node->name());
   VISITOR_RETURN(value);
 }
 
@@ -74,6 +77,16 @@ void Codegen::visitBinaryNode(BinaryExprAST* node) {
   if (!lhs || !rhs) VISITOR_RETURN(nullptr);
   Value* result = nullptr;
   switch (node->op()) {
+    case Token::Kind::Equals: {
+      VariableExprAST* lhs_var =
+          dynamic_cast<VariableExprAST*>(node->lhs().get());
+      if (!lhs_var) error("left hand side of assignment must be a variable");
+      AllocaInst* alloca = get_variable(lhs_var->name());
+      if (!alloca)
+        error("use of undeclared variable, %s", lhs_var->name().c_str());
+      builder_->CreateStore(rhs, alloca);
+      VISITOR_RETURN(rhs);
+    }
     case Token::Kind::Plus:
       VISITOR_RETURN(builder_->CreateAdd(lhs, rhs, "addtmp"));
     case Token::Kind::Minus:
@@ -209,7 +222,12 @@ void Codegen::visitFunctionNode(FunctionAST* node) {
   begin_scope();
   for (auto& arg : function->args()) {
     arg.setName(prototype.args()[arg.getArgNo()]);
-    set_variable(std::string(arg.getName()), &arg);
+    // store the argument in an alloca at the beginning of the function
+    IRBuilder<> tmp_builder(basic_block);
+    AllocaInst* alloca = tmp_builder.CreateAlloca(Type::getInt32Ty(*context_),
+                                                  nullptr, arg.getName());
+    tmp_builder.CreateStore(&arg, alloca);
+    set_variable(std::string(arg.getName()), alloca);
   }
   if (Value* ret = visitNode(node->body().get())) {
     builder_->CreateRet(ret);
@@ -224,7 +242,10 @@ void Codegen::visitFunctionNode(FunctionAST* node) {
 void Codegen::visitLetNode(LetExprAST* node) {
   Value* value = visitNode(node->expr().get());
   if (!value) VISITOR_RETURN(nullptr);
-  set_variable(node->name(), value);
+  AllocaInst* alloca = builder_->CreateAlloca(Type::getInt32Ty(*context_),
+                                              nullptr, node->name());
+  builder_->CreateStore(value, alloca);
+  set_variable(node->name(), alloca);
   VISITOR_RETURN(value);
 }
 
@@ -278,7 +299,7 @@ void Codegen::end_scope() {
   named_values_.pop_back();
 }
 
-Value* Codegen::get_variable(const std::string& name) {
+AllocaInst* Codegen::get_variable(const std::string& name) {
   // variables can be shadowed, so we start searching from the top
   for (auto it = named_values_.rbegin(); it != named_values_.rend(); ++it) {
     if (auto value = it->find(name); value != it->end()) return value->second;
@@ -286,8 +307,8 @@ Value* Codegen::get_variable(const std::string& name) {
   return nullptr;
 }
 
-void Codegen::set_variable(const std::string& name, Value* value) {
-  named_values_.back()[name] = value;
+void Codegen::set_variable(const std::string& name, AllocaInst* alloca) {
+  named_values_.back()[name] = alloca;
 }
 
 Function* Codegen::get_function(const std::string& name,

@@ -141,15 +141,17 @@ static int get_binary_precedence(const Tokenizer& tokenizer, const Token& op) {
       {Token::Kind::Eq, 50},
       {Token::Kind::Ne, 50},
       // &
-      {Token::Kind::Ampersand, 25},
+      {Token::Kind::Ampersand, 35},
       // ^
-      {Token::Kind::Caret, 20},
+      {Token::Kind::Caret, 30},
       // |
-      {Token::Kind::Pipe, 15},
+      {Token::Kind::Pipe, 25},
       // &&
-      {Token::Kind::And, 10},
+      {Token::Kind::And, 20},
       // ||
-      {Token::Kind::Or, 5},
+      {Token::Kind::Or, 15},
+      // =
+      {Token::Kind::Equals, 10},
   };
   auto it = operator_precedence.find(op.kind());
   if (it == operator_precedence.end()) {
@@ -276,6 +278,12 @@ std::unique_ptr<ExprAST> Parser::let_stmt() {
     error_expected(tokenizer_, token, "variable name");
   }
   std::string name = token.lexeme();
+  token = tokenizer_.next_token();
+  tokenizer_.putback(token);
+  if (token.kind() == Token::Kind::Semicolon) {
+    return std::make_unique<LetExprAST>(name,
+                                        std::make_unique<LiteralExprAST>(0));
+  }
   expect(Token::Kind::Equals, "=");
   auto expr = binary();
   if (!expr) error_expected(tokenizer_, tokenizer_.cur_token(), "expression");

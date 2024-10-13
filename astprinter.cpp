@@ -20,9 +20,11 @@ void ASTPrinter::visitPrefixNode(PrefixExprAST* node) {
 }
 
 void ASTPrinter::visitBinaryNode(BinaryExprAST* node) {
+  os_ << "(";
   visitNode(node->lhs().get());
   os_ << " " << Token(node->op()) << " ";
   visitNode(node->rhs().get());
+  os_ << ")";
 }
 
 void ASTPrinter::visitBlockNode(BlockExprAST* node) {

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <deque>
 #include <map>
 #include <memory>
+#include <vector>
 
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>
@@ -37,7 +37,7 @@ class Codegen : ASTNodeVisitor {
   std::unique_ptr<LLVMContext> context_;
   std::unique_ptr<Module> module_;
   std::unique_ptr<IRBuilder<>> builder_;
-  std::deque<std::map<std::string, Value*>> named_values_;
+  std::vector<std::map<std::string, AllocaInst*>> named_values_;
   std::map<std::string, std::unique_ptr<PrototypeAST>> function_prototypes_;
 
   Codegen();
@@ -56,8 +56,8 @@ class Codegen : ASTNodeVisitor {
   void begin_scope();
   void end_scope();
 
-  Value* get_variable(const std::string& name);
-  void set_variable(const std::string& name, Value* value);
+  AllocaInst* get_variable(const std::string& name);
+  void set_variable(const std::string& name, AllocaInst* alloca);
 
   Function* get_function(const std::string& name,
                          const std::vector<Type*>& arg_types,
