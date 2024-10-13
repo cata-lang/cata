@@ -16,7 +16,7 @@ def main() {
     let n;
     n = input();
     print(fib(n));
-    test_impure();
+    // test_impure();
     // test_operators();
 }
 
