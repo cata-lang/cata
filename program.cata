@@ -1,6 +1,6 @@
-// This is a comment
 extern input();
 extern print(a);
+// extern test_impure();
 // extern test_operators();
 
 def fib(n) {
@@ -12,12 +12,26 @@ def fib(n) {
     ans;
 }
 
-
 def main() {
-    let n = input();
+    let n;
+    n = input();
     print(fib(n));
+    test_impure();
     // test_operators();
 }
+
+/*
+def test_impure() {
+    let x;
+    if (1) {
+        let x = 1;
+        print(x);
+        x = 2;
+        print(x);
+    }
+    print(x);
+}
+*/
 
 /*
 def test_operators() {
